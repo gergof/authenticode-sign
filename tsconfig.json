@@ -1,0 +1,24 @@
+{
+	"compilerOptions": {
+		"target": "es2020",
+		"module": "node16",
+		"lib": ["es2020"],
+		"allowJs": true,
+		"rootDirs": ["src", "test"],
+		"outDir": "dist",
+		"resolveJsonModule": true,
+		"strict": true,
+		"skipLibCheck": true,
+		"allowSyntheticDefaultImports": true,
+		"esModuleInterop": true,
+		"moduleResolution": "nodenext",
+		"isolatedModules": true,
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true,
+		"declaration": true
+	},
+	"exclude": ["node_modules"],
+	"ts-node": {
+		"files": true
+	}
+}
