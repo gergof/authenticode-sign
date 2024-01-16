@@ -29,6 +29,16 @@ class SpcLink extends Asn1Wrapper {
 	}
 
 	public toAsn1() {
+		if(this.tag == SpcLinkType.file) {
+			return new asn1.Constructed({
+				idBlock: {
+					tagClass: 3,
+					tagNumber: this.tag
+				},
+				value: [this.content]
+			})
+		}
+
 		return new asn1.Primitive({
 			idBlock: {
 				tagClass: 3,

@@ -13,12 +13,21 @@ class SpcPeImageData extends Asn1Wrapper {
 	}
 
 	public toAsn1() {
+		const flags = Buffer.alloc(1);
+		flags.writeUInt8(0b10000000, 0);
+
 		return new asn1.Sequence({
 			value: [
 				new asn1.BitString({
-					valueHex: Buffer.alloc(1)
+					valueHex: flags
 				}),
-				this.file.toAsn1()
+				new asn1.Constructed({
+					idBlock: {
+						tagClass: 3,
+						tagNumber: 0
+					},
+					value: [this.file.toAsn1()]
+				})
 			]
 		});
 	}
