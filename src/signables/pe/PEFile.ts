@@ -25,9 +25,7 @@ class PEFile extends Signable {
 		super();
 		this.buff = file;
 
-		const peHeaderOffsetLocation = this.read(0x3c, 0, 4);
-		this.peHeaderOffset =
-			peHeaderOffsetLocation.readInt32LE(0) & 0xffffffff;
+		this.peHeaderOffset = this.readDWord(0x3c, 0);
 
 		if (!this.isPEFile()) {
 			throw new Error('Not PE file');
@@ -197,27 +195,17 @@ class PEFile extends Signable {
 			yield pefile.buff.subarray(pos, certificateTableOffset);
 			pos = certificateTableOffset + 8;
 
-			// digest from the end of the certificate table entry to the beginning of the certificate table
+			// diest from the end of the certificate table entry to the end of the file
+			yield pefile.buff.subarray(pos, pefile.buff.byteLength);
+
 			const certificateTable = pefile.getDataDirectory(
 				DataDirectoryType.CertificateTable
 			);
-			if (certificateTable != null && certificateTable.exists()) {
-				yield pefile.buff.subarray(
-					pos,
-					certificateTable.getVirtualAddress()
-				);
-				pos =
-					certificateTable.getVirtualAddress() +
-					certificateTable.getSize();
-			}
-
-			// diest from the end of the certificate table to the end of the file
-			yield pefile.buff.subarray(pos, pefile.buff.byteLength);
-
 			if (certificateTable == null || !certificateTable.exists()) {
 				// if the file has never been signed before, update the digest as if the file was padded on a 8 byte boundary
-				const paddingLength = 8 - (pefile.getSize() % 8);
-				yield Buffer.alloc(paddingLength);
+				if (pefile.getSize() % 8) {
+					yield Buffer.alloc(8 - (pefile.getSize() % 8));
+				}
 			}
 		}
 
