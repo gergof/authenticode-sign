@@ -244,9 +244,8 @@ class PEFile extends Signable {
 		);
 	}
 
-	public setSignature(signedData: pkijs.SignedData) {
-		const content = Buffer.from(signedData.toSchema().toBER());
-		const paddedContent = padBuffer(content, 8);
+	public setSignature(signedData: Buffer) {
+		const paddedContent = padBuffer(signedData, 8);
 
 		const signature = Buffer.alloc(paddedContent.byteLength + 8);
 		signature.writeInt32LE(signature.byteLength, 0);

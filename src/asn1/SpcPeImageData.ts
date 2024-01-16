@@ -16,7 +16,7 @@ class SpcPeImageData extends Asn1Wrapper {
 		return new asn1.Sequence({
 			value: [
 				new asn1.BitString({
-					valueHex: Buffer.alloc(0)
+					valueHex: Buffer.alloc(1)
 				}),
 				this.file.toAsn1()
 			]

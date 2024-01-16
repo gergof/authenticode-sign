@@ -6,6 +6,7 @@ import SignerObject from './SignerObject.js';
 import {
 	OID_CONTENT_TYPE,
 	OID_MESSAGE_DIGEST,
+	OID_SIGNED_DATA,
 	OID_SIGNING_TIME,
 	OID_SPC_INDIRECT_DATA,
 	OID_SPC_INDIVIDUAL_SP_KEY_PURPOSE,
@@ -115,7 +116,12 @@ class AuthenticodeSigner {
 			certificates: [cert]
 		});
 
-		file.setSignature(signedData);
+		const root = new pkijs.ContentInfo({
+			contentType: OID_SIGNED_DATA.getValue(),
+			content: signedData.toSchema(true)
+		});
+
+		file.setSignature(Buffer.from(root.toSchema().toBER()));
 
 		return file.getFile();
 	}
