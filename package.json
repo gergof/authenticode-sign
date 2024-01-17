@@ -33,7 +33,8 @@
     "pe",
     "codesign",
     "sign",
-    "signing"
+    "signing",
+    "code signing"
   ],
   "author": "Fándly Gergő",
   "license": "GPL-3.0",

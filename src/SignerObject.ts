@@ -10,7 +10,7 @@ interface SignerObject {
 	getCertificate: () => Buffer;
 	digest: DigestFn;
 	sign: SignFn;
-	timestamp: TimestampFn;
+	timestamp?: TimestampFn;
 }
 
 export default SignerObject;
