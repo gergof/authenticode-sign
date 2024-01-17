@@ -18,8 +18,8 @@ const main = async () => {
 	const certDer = await fsp.readFile(path.join(dir, 'signer.cer'))
 	const key = (await fsp.readFile(path.join(dir, 'signer.key'))).toString('utf8')
 	const signer = new AuthenticodeSigner({
-		getDigestAlgorithmOid: () => [2,16,840,1,101,3,4,2,1], // sha256
-		getSignatureAlgorithmOid: () => [1,2,840,10045,4,3,2], // ecdsa with sha256
+		getDigestAlgorithmOid: () => '2.16.840.1.101.3.4.2.1', // sha256
+		getSignatureAlgorithmOid: () => '1.2.840.10045.4.3.2', // ecdsa with sha256
 		getCertificate: () => certDer,
 		digest: async (dataIterator) => {
 			const hash = crypto.createHash('sha256')

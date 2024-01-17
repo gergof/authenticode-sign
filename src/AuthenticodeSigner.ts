@@ -45,7 +45,7 @@ class AuthenticodeSigner {
 		const content = await file.getIndirectData(
 			this.signer.digest,
 			new pkijs.AlgorithmIdentifier({
-				algorithmId: this.signer.getDigestAlgorithmOid().join('.')
+				algorithmId: this.signer.getDigestAlgorithmOid()
 			})
 		);
 		const contentDigest = await this.signer.digest(
@@ -96,10 +96,10 @@ class AuthenticodeSigner {
 				serialNumber: cert.serialNumber
 			}),
 			digestAlgorithm: new pkijs.AlgorithmIdentifier({
-				algorithmId: this.signer.getDigestAlgorithmOid().join('.')
+				algorithmId: this.signer.getDigestAlgorithmOid()
 			}),
 			signatureAlgorithm: new pkijs.AlgorithmIdentifier({
-				algorithmId: this.signer.getSignatureAlgorithmOid().join('.')
+				algorithmId: this.signer.getSignatureAlgorithmOid()
 			}),
 			signature: new asn1.OctetString({ valueHex: signature }),
 			signedAttrs: attributes
@@ -109,7 +109,7 @@ class AuthenticodeSigner {
 			version: 1,
 			digestAlgorithms: [
 				new pkijs.AlgorithmIdentifier({
-					algorithmId: this.signer.getDigestAlgorithmOid().join('.')
+					algorithmId: this.signer.getDigestAlgorithmOid()
 				})
 			],
 			encapContentInfo: new pkijs.EncapsulatedContentInfo({

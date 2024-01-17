@@ -1,1 +1,1 @@
-export type OID = number[];
+export type OID = string;
