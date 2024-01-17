@@ -36,8 +36,7 @@ const main = async () => {
 			return hash.digest()
 		},
 		sign: async (dataIterator) => {
-			const binArray: Buffer[] = [];
-			let totalLength = 0;
+			const signature = crypto.createSign('sha256')
 
 			while(true){
 				const it = dataIterator.next();
@@ -45,13 +44,10 @@ const main = async () => {
 					break;
 				}
 
-				binArray.push(it.value);
-				totalLength += it.value.byteLength;
+				await signature.update(it.value)
 			}
 
-			return crypto.sign('sha256', Buffer.concat(binArray, totalLength), {
-				key
-			})
+			return signature.sign(key)
 		},
 		timestamp: async (data) => {
 			throw new Error('not implemented')

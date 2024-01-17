@@ -1,5 +1,6 @@
 import asn1 from 'asn1js';
 import pkijs from 'pkijs';
+import pvtsutils from 'pvtsutils';
 
 import SignOptions from './SignOptions.js';
 import SignerObject from './SignerObject.js';
@@ -48,7 +49,7 @@ class AuthenticodeSigner {
 			})
 		);
 		const contentDigest = await this.signer.digest(
-			makeIterator(Buffer.from(content.toAsn1().toBER()))
+			makeIterator(Buffer.from(content.toAsn1().valueBlock.toBER()))
 		);
 
 		const attributes = new pkijs.SignedAndUnsignedAttributes({
@@ -76,9 +77,14 @@ class AuthenticodeSigner {
 				})
 			]
 		});
+		attributes.encodedValue = attributes.toSchema().toBER();
+		const attributesView = pvtsutils.BufferSourceConverter.toUint8Array(
+			attributes.encodedValue
+		);
+		attributesView[0] = 0x31;
 
 		const signature = await this.signer.sign(
-			makeIterator(Buffer.from(attributes.toSchema().toBER()))
+			makeIterator(Buffer.from(attributes.encodedValue))
 		);
 
 		const cert = pkijs.Certificate.fromBER(this.signer.getCertificate());
@@ -108,9 +114,7 @@ class AuthenticodeSigner {
 			],
 			encapContentInfo: new pkijs.EncapsulatedContentInfo({
 				eContentType: OID_SPC_INDIRECT_DATA.getValue(),
-				eContent: new asn1.OctetString({
-					valueHex: content.toAsn1().toBER()
-				})
+				eContent: content.toAsn1() as any
 			}),
 			signerInfos: [signerInfo],
 			certificates: [cert]
@@ -118,8 +122,18 @@ class AuthenticodeSigner {
 
 		const root = new pkijs.ContentInfo({
 			contentType: OID_SIGNED_DATA.getValue(),
-			content: signedData.toSchema(true)
+			content: signedData.toSchema()
 		});
+
+		const rootSchema = root.toSchema();
+
+		// hack version back to v1
+		const version = Buffer.alloc(1);
+		version.writeUInt8(1);
+		(
+			rootSchema as any
+		).valueBlock.value[1].valueBlock.value[0].valueBlock.value[0].valueBlock.valueHex =
+			version;
 
 		file.setSignature(Buffer.from(root.toSchema().toBER()));
 
