@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.1.1](https://github.com/gergof/authenticode-sign/compare/v1.1.0...v1.1.1) (2024-01-17)
+
+
+### Bug Fixes
+
+* Fixed ESM exports ([091e823](https://github.com/gergof/authenticode-sign/commit/091e8231dd409156a8bcf13be334382548cc5fb7))
+
 ## 1.1.0 (2024-01-17)
 
 
