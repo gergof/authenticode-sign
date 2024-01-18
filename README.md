@@ -114,6 +114,20 @@ const main = async () => {
 
 			// sign it with your private key and return it as a buffer
 			return signature.sign(key)
+		},
+		timestamp: async data => {
+			// send the timestamp request to one of the public timestamping servers
+			// see the list of free TSAs: https://gist.github.com/Manouchehri/fd754e402d98430243455713efada710
+			const resp = await fetch('http://timestamp.digicert.com', {
+				method: 'POST',
+				headers: {
+					'Content-type': 'application/timestamp-query',
+					'Content-length': data.byteLength.toString()
+				},
+				body: data
+			});
+
+			return Buffer.from(await resp.arrayBuffer());
 		}
 	})
 

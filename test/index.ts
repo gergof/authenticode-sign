@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { AuthenticodeSigner, PEFile } from '../src/index.js';
 import crypto from 'crypto';
+import fetch from 'node-fetch';
 
 const main = async () => {
 	const dir = path.dirname(fileURLToPath(import.meta.url));
@@ -52,7 +53,16 @@ const main = async () => {
 			return signature.sign(key);
 		},
 		timestamp: async data => {
-			throw new Error('not implemented');
+			const resp = await fetch('http://timestamp.digicert.com', {
+				method: 'POST',
+				headers: {
+					'Content-type': 'application/timestamp-query',
+					'Content-length': data.byteLength.toString()
+				},
+				body: data
+			});
+
+			return Buffer.from(await resp.arrayBuffer());
 		}
 	});
 

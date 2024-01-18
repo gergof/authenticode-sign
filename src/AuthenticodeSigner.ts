@@ -7,6 +7,7 @@ import SignerObject from './SignerObject.js';
 import {
 	OID_CONTENT_TYPE,
 	OID_MESSAGE_DIGEST,
+	OID_RFC3161_COUNTER_SIGNATURE,
 	OID_SIGNED_DATA,
 	OID_SIGNING_TIME,
 	OID_SPC_INDIRECT_DATA,
@@ -105,6 +106,14 @@ class AuthenticodeSigner {
 			signedAttrs: attributes
 		});
 
+		if (this.signer.timestamp) {
+			// timestamp the signature
+			signerInfo.unsignedAttrs = new pkijs.SignedAndUnsignedAttributes({
+				type: 1,
+				attributes: [await this.timestampSignature(signature)]
+			});
+		}
+
 		const signedData = new pkijs.SignedData({
 			version: 1,
 			digestAlgorithms: [
@@ -126,6 +135,7 @@ class AuthenticodeSigner {
 		});
 
 		const rootSchema = root.toSchema();
+		rootSchema.toBER();
 
 		// hack version back to v1
 		const version = Buffer.alloc(1);
@@ -135,9 +145,61 @@ class AuthenticodeSigner {
 		).valueBlock.value[1].valueBlock.value[0].valueBlock.value[0].valueBlock.valueHex =
 			version;
 
-		file.setSignature(Buffer.from(root.toSchema().toBER()));
+		file.setSignature(Buffer.from(rootSchema.toBER()));
 
 		return file.getFile();
+	}
+
+	private async timestampSignature(
+		signature: Buffer
+	): Promise<pkijs.Attribute> {
+		if (!this.signer.timestamp) {
+			throw new Error('Timestamp function not present on signer object');
+		}
+
+		const signatureDigest = await this.signer.digest(
+			makeIterator(signature)
+		);
+
+		const timestampRequest = new pkijs.TimeStampReq({
+			version: 1,
+			messageImprint: new pkijs.MessageImprint({
+				hashAlgorithm: new pkijs.AlgorithmIdentifier({
+					algorithmId: this.signer.getDigestAlgorithmOid()
+				}),
+				hashedMessage: new asn1.OctetString({
+					valueHex: signatureDigest
+				})
+			}),
+			certReq: true
+		});
+
+		const result = await this.signer.timestamp(
+			Buffer.from(timestampRequest.toSchema().toBER())
+		);
+
+		const timestampResponse = pkijs.TimeStampResp.fromBER(result);
+
+		if (
+			timestampResponse.status.status != pkijs.PKIStatus.granted &&
+			timestampResponse.status.status != pkijs.PKIStatus.grantedWithMods
+		) {
+			throw new Error(
+				'Timestamping rejected: ' +
+					timestampResponse.status.statusStrings
+						?.map(str => str.getValue())
+						.join(',')
+			);
+		}
+
+		if (!timestampResponse.timeStampToken?.content) {
+			throw new Error('Token not present on timestamp response');
+		}
+
+		return new pkijs.Attribute({
+			type: OID_RFC3161_COUNTER_SIGNATURE.getValue(),
+			values: [timestampResponse.timeStampToken.toSchema()]
+		});
 	}
 }
 
