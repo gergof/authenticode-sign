@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.2.0](https://github.com/gergof/authenticode-sign/compare/v1.1.1...v1.2.0) (2024-01-18)
+
+
+### Features
+
+* Added support for nested signatures ([e97c208](https://github.com/gergof/authenticode-sign/commit/e97c2083e68d9b5606e14786c60d45fac1bb2e4c))
+* Added support for timestamping the signatures ([7815b69](https://github.com/gergof/authenticode-sign/commit/7815b6922bd44c43a89369950c3ae23f9889e15c))
+
+
+### Documentation
+
+* Added documentation for signature nesting ([7dc635d](https://github.com/gergof/authenticode-sign/commit/7dc635dca9679d607960c7a81ec6c05456576864))
+
 ### [1.1.1](https://github.com/gergof/authenticode-sign/compare/v1.1.0...v1.1.1) (2024-01-17)
 
 
