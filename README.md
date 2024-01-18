@@ -9,7 +9,7 @@ NodeJS cross-platform module to code-sign windows executables with Authenticode 
 
 ### What is it?
 
-`authenticode-sign` is a simple NodeJS module written in TypeScript that can be used to create authenticode signature for Windows Portable Executable files (.exe). It can be used to programatically sign code with your own crypto tools. As far as my testing goes, this one is the only pure javascript module that creates working authenticode signatures and can use your own signing tools.
+`authenticode-sign` is a simple NodeJS module written in TypeScript that can be used to create, nest and replace authenticode signatures for Windows Portable Executable files (.exe). It can be used to programatically sign code with your own crypto tools. As far as my testing goes, this one is the only pure javascript module that creates working authenticode signatures and can use your own signing tools.
 
 I took a lot of inspiration from the [Jsign](https://github.com/ebourg/jsign), [osslsigncode](https://github.com/mtrojnar/osslsigncode) and [resedit](https://github.com/jet2jet/resedit-js) projects.
 
@@ -144,6 +144,129 @@ const main = async () => {
 }
 
 main();
+```
+
+### Signing options
+
+You can pass additional options to the `signer.sing()` function:
+- `replace` (boolean): if true, replace the existing signature with the newly created one. It can be safely set even if no existing signature is present
+- `nest` (boolean): if true, nest the newly created signature into the existing one. It will throw an error if no existing signature is present
+
+If the file already has a signature, you __MUST__ specify either `replace` or `nest`.
+
+### Nesting signatures
+
+To maximize compatibility, you should sign your exectuable using SHA1 (for legacy systems) and SHA256 digests as well. You can use signature nesting to achieve this. The first signature should be SHA1 and the nested one should be SHA256.
+
+This basically means that you're going to sign the executable two times and the second time you specify the `{nest: true}` option.
+
+Note: You __MUST__ timestamp the SHA1 signatures, otherwise Windows will not accept them.
+
+Example usage of nesting:
+```ts
+// refer to the simple example for the rest
+
+const sha1Signer = new AuthenticodeSigner({
+	getDigestAlgorithmOid: () => '1.3.14.3.2.26', // SHA1
+	getSignatureAlgorithmOid: () => '1.2.840.10045.4.1', // ecdsa with SHA1
+	getCertificate: () => certDer,
+	digest: async (dataIterator) => {
+		const hash = crypto.createHash('sha1')
+
+		while (true) {
+			const it = dataIterator.next();
+			if(it.done){
+				break;
+			}
+
+			await hash.update(it.value)
+		}
+
+		return hash.digest()
+	},
+	sign: async (dataIterator) => {
+		const signature = crypto.createSign('sha1')
+
+		while (true) {
+			const it = dataIterator.next();
+			if(it.done) {
+				break;
+			}
+
+			await signature.update(it.value)
+		}
+
+		return signature.sign(key)
+	},
+	timestamp: async data => {
+		const resp = await fetch('http://timestamp.digicert.com', {
+			method: 'POST',
+			headers: {
+				'Content-type': 'application/timestamp-query',
+				'Content-length': data.byteLength.toString()
+			},
+			body: data
+		});
+
+		return Buffer.from(await resp.arrayBuffer());
+	}
+});
+
+const sha256Signer = new AuthenticodeSigner({
+	getDigestAlgorithmOid: () => '2.16.840.1.101.3.4.2.1', // SHA256
+	getSignatureAlgorithmOid: () => '1.2.840.10045.4.3.2', // ecdsa with SHA256
+	getCertificate: () => certDer,
+	digest: async (dataIterator) => {
+		const hash = crypto.createHash('sha256')
+
+		while (true) {
+			const it = dataIterator.next();
+			if(it.done){
+				break;
+			}
+
+			await hash.update(it.value)
+		}
+
+		return hash.digest()
+	},
+	sign: async (dataIterator) => {
+		const signature = crypto.createSign('sha256')
+
+		while (true) {
+			const it = dataIterator.next();
+			if(it.done) {
+				break;
+			}
+
+			await signature.update(it.value)
+		}
+
+		return signature.sign(key)
+	},
+	timestamp: async data => {
+		const resp = await fetch('http://timestamp.digicert.com', {
+			method: 'POST',
+			headers: {
+				'Content-type': 'application/timestamp-query',
+				'Content-length': data.byteLength.toString()
+			},
+			body: data
+		});
+
+		return Buffer.from(await resp.arrayBuffer());
+	}
+});
+
+const exe = new PEFile(file);
+
+const sha1SignedExeFile = sha1Signer.sign(exe);
+
+const sha1SignedExe = new PEFile(sha1SignedExeFile);
+
+const result = sha256Signer.sign(sha1SignedExe, { nest: true });
+
+// result now contains the double-signed exe that can be writte to disk
 ```
 
 ### Testing the library
