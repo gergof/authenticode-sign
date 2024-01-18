@@ -130,6 +130,7 @@ class PEFile extends Signable {
 					this.buff.subarray(0, directory.getVirtualAddress()),
 					data
 				]);
+				directory.write(directory.getVirtualAddress(), data.byteLength);
 			} else {
 				if (type == DataDirectoryType.CertificateTable) {
 					throw new Error(
@@ -186,6 +187,8 @@ class PEFile extends Signable {
 			// digest from the beginning to the checksum field
 			const checksumOffset = pefile.peHeaderOffset + 88;
 			yield pefile.buff.subarray(pos, checksumOffset);
+
+			// skip the checksum field
 			pos = checksumOffset + 4;
 
 			// digest from the end of the checksum to the beginning of the certificate table entry
@@ -193,16 +196,32 @@ class PEFile extends Signable {
 				pefile.getDataDirectoryOffset() +
 				8 * DataDirectoryType.CertificateTable;
 			yield pefile.buff.subarray(pos, certificateTableOffset);
-			pos = certificateTableOffset + 8;
 
-			// diest from the end of the certificate table entry to the end of the file
-			yield pefile.buff.subarray(pos, pefile.buff.byteLength);
+			// skip the certificate entry
+			pos = certificateTableOffset + 8;
 
 			const certificateTable = pefile.getDataDirectory(
 				DataDirectoryType.CertificateTable
 			);
+
+			// digest from the end of the certificate table entry to the beginning of the certificate table
+			if (certificateTable != null && certificateTable.exists()) {
+				yield pefile.buff.subarray(
+					pos,
+					certificateTable.getVirtualAddress()
+				);
+
+				// skip the certificate table
+				pos =
+					certificateTable.getVirtualAddress() +
+					certificateTable.getSize();
+			}
+
+			// diest from the end of the certificate table to the end of the file
+			yield pefile.buff.subarray(pos, pefile.buff.byteLength);
+
+			// if the file has never been signed before, update the digest as if the file was padded on a 8 byte boundary
 			if (certificateTable == null || !certificateTable.exists()) {
-				// if the file has never been signed before, update the digest as if the file was padded on a 8 byte boundary
 				if (pefile.getSize() % 8) {
 					yield Buffer.alloc(8 - (pefile.getSize() % 8));
 				}
@@ -230,6 +249,42 @@ class PEFile extends Signable {
 				digest: new asn1.OctetString({ valueHex: fileDigest })
 			})
 		);
+	}
+
+	public getSignature(): Buffer {
+		const certificateTable = this.getDataDirectory(
+			DataDirectoryType.CertificateTable
+		);
+		if (certificateTable == null || !certificateTable.exists()) {
+			throw new Error('No signature is present');
+		}
+
+		const size = this.readDWord(certificateTable.getVirtualAddress(), 0);
+		if (
+			size < 8 ||
+			size > this.getSize() - certificateTable.getVirtualAddress()
+		) {
+			throw new Error('Invalid certificate table size');
+		}
+
+		const revision = this.readWord(certificateTable.getVirtualAddress(), 4);
+		const type = this.readWord(certificateTable.getVirtualAddress(), 6);
+
+		if (revision != 0x0200) {
+			throw new Error('Invalid revision. Expected 0x0200');
+		}
+
+		if (type != 0x0002) {
+			throw new Error('Invalid type. Not PKCS signed data.');
+		}
+
+		const content = this.read(
+			certificateTable.getVirtualAddress(),
+			8,
+			size - 8
+		);
+
+		return content;
 	}
 
 	public setSignature(signedData: Buffer) {

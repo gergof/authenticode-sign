@@ -12,6 +12,7 @@ import {
 	OID_SIGNING_TIME,
 	OID_SPC_INDIRECT_DATA,
 	OID_SPC_INDIVIDUAL_SP_KEY_PURPOSE,
+	OID_SPC_NESTED_SIGNATURE,
 	OID_SPC_STATEMENT_TYPE
 } from './asn1/OIDs.js';
 import Signable from './signables/Signable.js';
@@ -33,13 +34,21 @@ class AuthenticodeSigner {
 			);
 
 			if (certificateTable != null && certificateTable.exists()) {
-				if (!options?.replace) {
-					throw new Error('Can not add nested signatures');
+				if (options?.replace) {
+					// replace existing signature, clear certificate table
+					certificateTable.erase();
+					certificateTable.write(0, 0);
+				} else if (!options?.nest) {
+					throw new Error(
+						'Certificate table already exists but neither replace or nest option was provided'
+					);
 				}
-
-				// erase previous signatures
-				certificateTable.erase();
-				certificateTable.write(0, 0);
+			} else {
+				if (options?.nest) {
+					throw new Error(
+						'Nest option provided but certificate table does not exist'
+					);
+				}
 			}
 		}
 
@@ -134,20 +143,65 @@ class AuthenticodeSigner {
 			content: signedData.toSchema()
 		});
 
-		const rootSchema = root.toSchema();
-		rootSchema.toBER();
+		if (options?.nest) {
+			// nest signature into an existing signature
+			const existingSignature = pkijs.ContentInfo.fromBER(
+				file.getSignature()
+			);
+			const existingSignedData = new pkijs.SignedData();
+			existingSignedData.fromSchema(existingSignature.content);
+
+			// check if unsigned attributes exist
+			if (!existingSignedData.signerInfos[0].unsignedAttrs) {
+				existingSignedData.signerInfos[0].unsignedAttrs =
+					new pkijs.SignedAndUnsignedAttributes({
+						type: 1,
+						attributes: []
+					});
+			}
+
+			// check if a nested attribute already exists
+			const existingNestedAttribute =
+				existingSignedData.signerInfos[0].unsignedAttrs.attributes.find(
+					attr => attr.type == OID_SPC_NESTED_SIGNATURE.getValue()
+				);
+
+			if (existingNestedAttribute) {
+				existingNestedAttribute.values.push(this.getRootSchema(root));
+			} else {
+				existingSignedData.signerInfos[0].unsignedAttrs.attributes.push(
+					new pkijs.Attribute({
+						type: OID_SPC_NESTED_SIGNATURE.getValue(),
+						values: [this.getRootSchema(root)]
+					})
+				);
+			}
+
+			const newRoot = new pkijs.ContentInfo({
+				contentType: OID_SIGNED_DATA.getValue(),
+				content: existingSignedData.toSchema()
+			});
+
+			file.setSignature(Buffer.from(this.getRootSchema(newRoot).toBER()));
+		} else {
+			file.setSignature(Buffer.from(this.getRootSchema(root).toBER()));
+		}
+
+		return file.getFile();
+	}
+
+	private getRootSchema(root: pkijs.ContentInfo) {
+		const schema = root.toSchema();
 
 		// hack version back to v1
 		const version = Buffer.alloc(1);
 		version.writeUInt8(1);
 		(
-			rootSchema as any
+			schema as any
 		).valueBlock.value[1].valueBlock.value[0].valueBlock.value[0].valueBlock.valueHex =
 			version;
 
-		file.setSignature(Buffer.from(rootSchema.toBER()));
-
-		return file.getFile();
+		return schema;
 	}
 
 	private async timestampSignature(

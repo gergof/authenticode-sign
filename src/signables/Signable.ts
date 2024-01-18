@@ -8,6 +8,7 @@ abstract class Signable {
 		digest: DigestFn,
 		digestAlgorithm: pkijs.AlgorithmIdentifier
 	): Promise<SpcIndirectDataContent>;
+	public abstract getSignature(): Buffer;
 	public abstract setSignature(signedData: Buffer): void;
 	public abstract getFile(): Buffer;
 }
