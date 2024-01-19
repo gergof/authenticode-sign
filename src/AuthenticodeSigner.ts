@@ -98,6 +98,10 @@ class AuthenticodeSigner {
 		);
 
 		const cert = pkijs.Certificate.fromBER(this.signer.getCertificate());
+		const intermediateCerts =
+			this.signer
+				.getIntermediateCertificates?.()
+				.map(binaryCert => pkijs.Certificate.fromBER(binaryCert)) || [];
 
 		const signerInfo = new pkijs.SignerInfo({
 			version: 1,
@@ -135,7 +139,7 @@ class AuthenticodeSigner {
 				eContent: content.toAsn1() as any
 			}),
 			signerInfos: [signerInfo],
-			certificates: [cert]
+			certificates: [cert, ...intermediateCerts]
 		});
 
 		const root = new pkijs.ContentInfo({

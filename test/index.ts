@@ -17,6 +17,9 @@ const main = async () => {
 	console.log('Checksum:', exe.calculateChecksum().toString(16));
 
 	const certDer = await fsp.readFile(path.join(dir, 'signer.cer'));
+	const intermediateCertDer = await fsp.readFile(
+		path.join(dir, 'intermediate.cer')
+	);
 	const key = (await fsp.readFile(path.join(dir, 'signer.key'))).toString(
 		'utf8'
 	);
@@ -24,6 +27,7 @@ const main = async () => {
 		getDigestAlgorithmOid: () => '2.16.840.1.101.3.4.2.1', // sha256
 		getSignatureAlgorithmOid: () => '1.2.840.10045.4.3.2', // ecdsa with sha256
 		getCertificate: () => certDer,
+		getIntermediateCertificates: () => [intermediateCertDer],
 		digest: async dataIterator => {
 			const hash = crypto.createHash('sha256');
 

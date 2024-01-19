@@ -8,6 +8,7 @@ interface SignerObject {
 	getDigestAlgorithmOid: () => OID;
 	getSignatureAlgorithmOid: () => OID;
 	getCertificate: () => Buffer;
+	getIntermediateCertificates?: () => Buffer[];
 	digest: DigestFn;
 	sign: SignFn;
 	timestamp?: TimestampFn;

@@ -25,6 +25,7 @@ interface SignerObject {
 	getDigestAlgorithmOid: () => OID;
 	getSignatureAlgorithmOid: () => OID;
 	getCertificate: () => Buffer;
+	getIntermediateCertificates?: () => Buffer[];
 	digest: DigestFn;
 	sign: SignFn;
 	timestamp?: TimestampFn;
@@ -35,6 +36,7 @@ Where:
 - `getDigestAlgorithmOid()` returns the Object ID of the digest algorithm. For example `2.16.840.1.101.3.4.2.1` for SHA256. You can get the list of hash algorithm OIDs from [oidref hashAlgs](https://oidref.com/2.16.840.1.101.3.4.2)
 - `getSignatureAlgorithmOid()` return the Object ID of the signature algorithm. For example `1.2.840.10045.4.3.2` for SHA256Ecdsa. For these you don't have a nice list like the one for the hashing algorithms, but you can still use [oidref.com](https://oidref.com) to find the required OIDs
 - `getCertificate()` returns the X.509 certificate in a DER encoded (binary) format as a NodeJS buffer
+- `getIntermediateCertificates()` can optionally return an array of DER encoded X.509 certificates that will be included in the certificate chain of the signature. It is recommended to include the intermediate certificates and even the root certificate in the chain. Omitting the intermediate certificate might cause the validation to fail
 - `digest(data: Iterator<Buffer>)` hashes the supplied data and returns it as a buffer (can be async)
 - `sign(data: Iterator<Buffer>)` signes the supplied data and returns it as a buffer (can be async)
 - `timestamp(data: Buffer)` sends the timestamp request to your TSA and returns the response as a buffer (can be async). This method is optional, if you don't implement it, the signature will not be timestamped.
@@ -71,6 +73,9 @@ const main = async () => {
 	// read the certificate already encoded in DER format
 	const certDer = await fsp.readFile(path.join(dir, 'signer.cer'))
 
+	// read the intermediate certificate already encoded in DER format
+	const intermediateCertDer = await fsp.readFile(path.join(dir, 'intermediate.cer'))
+
 	// read the private key encoded in PEM format
 	const key = (await fsp.readFile(path.join(dir, 'signer.key'))).toString('utf8')
 
@@ -79,6 +84,7 @@ const main = async () => {
 		getDigestAlgorithmOid: () => '2.16.840.1.101.3.4.2.1', // return OID for sha256
 		getSignatureAlgorithmOid: () => '1.2.840.10045.4.3.2', // return OID for ecdsa with sha256
 		getCertificate: () => certDer, // return the binary certificate
+		getIntermediateCertificates: () => [intermediateCertDer], // return the intermediate certificates
 		digest: async (dataIterator) => {
 			// create a SHA256 hash using NodeJS Crypto module
 			const hash = crypto.createHash('sha256')
