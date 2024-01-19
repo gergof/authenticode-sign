@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.3.0](https://github.com/gergof/authenticode-sign/compare/v1.2.0...v1.3.0) (2024-01-19)
+
+
+### Features
+
+* Added option to include additional certificates in the certification chain ([27247f9](https://github.com/gergof/authenticode-sign/commit/27247f94cb46bc9bb400c7c90651e28f685d9791))
+
 ## [1.2.0](https://github.com/gergof/authenticode-sign/compare/v1.1.1...v1.2.0) (2024-01-18)
 
 
